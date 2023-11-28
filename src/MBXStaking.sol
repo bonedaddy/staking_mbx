@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./MPXUtils.sol";
+import "./MBXUtils.sol";
 import "./interfaces/IERC20Lite.sol";
 import "solmate/utils/ReentrancyGuard.sol";
-import "./MPXRewardLibrary.sol";
+import "./MBXRewardLibrary.sol";
 
 
 contract StakingContract is ReentrancyGuard {
@@ -92,9 +92,9 @@ contract StakingContract is ReentrancyGuard {
     /// @param _stakingToken is the ERC20 token address that must be staked
     /// @param _rewardToken is the ERC20 token address that is given as rewards
     function newStakePool(
-        MPXUtils.RewardParameters[3] calldata _rewardParameters,
+        MBXUtils.RewardParameters[3] calldata _rewardParameters,
         StakingTier[3] calldata _tiers,
-        MPXUtils.TimeSpan calldata _timespan,
+        MBXUtils.TimeSpan calldata _timespan,
         address _stakingToken,
         address _rewardToken
     ) public {
@@ -108,7 +108,7 @@ contract StakingContract is ReentrancyGuard {
         );
         pools[0] = StakingPool({
             totalStaked: 0,
-            rewardRate: MPXUtils.computeRewardRate(
+            rewardRate: MBXUtils.computeRewardRate(
                 _rewardParameters[0].rewardsToEmit,
                 _rewardParameters[0].rewardDurationSeconds
             ),
@@ -120,7 +120,7 @@ contract StakingContract is ReentrancyGuard {
         });
         pools[1] = StakingPool({
             totalStaked: 0,
-            rewardRate: MPXUtils.computeRewardRate(
+            rewardRate: MBXUtils.computeRewardRate(
                 _rewardParameters[1].rewardsToEmit,
                 _rewardParameters[1].rewardDurationSeconds
             ),
@@ -133,7 +133,7 @@ contract StakingContract is ReentrancyGuard {
 
         pools[2] = StakingPool({
             totalStaked: 0,
-            rewardRate: MPXUtils.computeRewardRate(
+            rewardRate: MBXUtils.computeRewardRate(
                 _rewardParameters[2].rewardsToEmit,
                 _rewardParameters[2].rewardDurationSeconds
             ),
@@ -239,11 +239,11 @@ contract StakingContract is ReentrancyGuard {
         require(deposit.stakedAmount > 0, "cannot unstake 0");
         require(deposit.initialized, "not initialized");
 
-        MPXUtils.UnstakePenalty memory unstakePenalty =
-            MPXUtils.calculateUnstakePenalty(deposit.stakedAmount, pool.stakingToken.decimals());
+        MBXUtils.UnstakePenalty memory unstakePenalty =
+            MBXUtils.calculateUnstakePenalty(deposit.stakedAmount, pool.stakingToken.decimals());
 
         // the total penalty to deduct from their withdrawable amount
-        uint256 totalPenalty = MPXUtils.totalPenaltyFee(unstakePenalty);
+        uint256 totalPenalty = MBXUtils.totalPenaltyFee(unstakePenalty);
         // the amount they can withdraw
         uint256 withdrawAmount = deposit.stakedAmount - totalPenalty;
         // validate the balances match up
@@ -290,7 +290,7 @@ contract StakingContract is ReentrancyGuard {
 
         /// @dev helper function to add the number of days a tier locksup for to the specified timaestamp
     function addDays(uint256 _timestamp, StakingTier _tier) public pure returns (uint256) {
-        return MPXUtils.addDays(_timestamp, getDays(_tier));
+        return MBXUtils.addDays(_timestamp, getDays(_tier));
     }
 
     /// @dev returns the number of days a tier locks tokens for
@@ -322,14 +322,14 @@ contract StakingContract is ReentrancyGuard {
         StakingPools memory pool = stakingPools[_poolId];
         StakingPoolDeposit memory deposit = deposits[_poolId][_account];
         uint256 index = getIndex(deposit.tier);
-        return MPXReward.earned(
-            MPXReward.RewardData({
+        return MBXReward.earned(
+            MBXReward.RewardData({
                 rewardRate: pool.pools[index].rewardRate,
                 lastUpdateTime: pool.pools[index].lastUpdateTime,
                 rewardPerTokenStored: pool.pools[index].rewardPerTokenStored,
                 periodFinish: pool.endTime
             }),
-            MPXReward.UserRewardData({
+            MBXReward.UserRewardData({
                 userRewardPerTokenPaid: deposit.userRewardPerTokenPaid,
                 rewards: deposit.rewards
             }),
@@ -352,14 +352,14 @@ contract StakingContract is ReentrancyGuard {
         
         uint256 index = getIndex(deposit.tier);
 
-        (MPXReward.RewardData memory poolRewards, MPXReward.UserRewardData memory userRewards) = MPXReward.updateReward(
-            MPXReward.RewardData({
+        (MBXReward.RewardData memory poolRewards, MBXReward.UserRewardData memory userRewards) = MBXReward.updateReward(
+            MBXReward.RewardData({
                 rewardRate: pool.pools[index].rewardRate,
                 lastUpdateTime: pool.pools[index].lastUpdateTime,
                 rewardPerTokenStored: pool.pools[index].rewardPerTokenStored,
                 periodFinish: pool.endTime
             }),
-            MPXReward.UserRewardData({
+            MBXReward.UserRewardData({
                 userRewardPerTokenPaid: deposit.userRewardPerTokenPaid,
                 rewards: deposit.rewards
             }),

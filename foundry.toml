@@ -10,7 +10,8 @@ asm-optimized = true
 optimize = true
 optimizer_runs = 200
 remappings = [
-    "forge-std/=lib/forge-std/src/"
+    "forge-std/=lib/forge-std/src/",
+    "solmate/=lib/solmate/src"
 ]
 
 # caches storage retrieved locally for certain chains and endpoints

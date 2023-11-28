@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/MPXStaking.sol";
-import "../src/MPXUtils.sol";
+import "../src/MBXStaking.sol";
+import "../src/MBXUtils.sol";
 import "./MockERC20.sol";
 import "./StakingDepositor.sol";
 import "../src/interfaces/IERC20Lite.sol";
@@ -37,7 +37,7 @@ contract StakingContractTestBase is Test {
         uint256 _thirtyTierRewardsToEmit,
         uint256 _sixtyTierRewardsToEmit
     ) public {
-        MPXUtils.TimeSpan memory tspan = MPXUtils.computeTimeSpan(
+        MBXUtils.TimeSpan memory tspan = MBXUtils.computeTimeSpan(
             _startTime,
             _rewardDurationSeconds
         );
@@ -46,16 +46,16 @@ contract StakingContractTestBase is Test {
         rewardToken = new MockERC20("Reward Token", "RWD", 18);
         stakingContract = new StakingContract(address(0x1), address(this));
 
-        MPXUtils.RewardParameters[3] memory params;
-        params[0] = MPXUtils.RewardParameters({
+        MBXUtils.RewardParameters[3] memory params;
+        params[0] = MBXUtils.RewardParameters({
             rewardsToEmit: _fifteenTierRewardsToEmit,
             rewardDurationSeconds: _rewardDurationSeconds
         });
-        params[1] = MPXUtils.RewardParameters({
+        params[1] = MBXUtils.RewardParameters({
             rewardsToEmit: _thirtyTierRewardsToEmit,
             rewardDurationSeconds: _rewardDurationSeconds
         });
-        params[2] = MPXUtils.RewardParameters({
+        params[2] = MBXUtils.RewardParameters({
             rewardsToEmit: _sixtyTierRewardsToEmit,
             rewardDurationSeconds: _rewardDurationSeconds
         });

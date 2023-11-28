@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/MPXStaking.sol";
-import "../src/MPXUtils.sol";
+import "../src/MBXStaking.sol";
+import "../src/MBXUtils.sol";
 import "./MockERC20.sol";
 import "./StakingDepositor.sol";
-import "./MPXStakingBase.sol";
+import "./MBXStakingBase.sol";
 import "../src/interfaces/IERC20Lite.sol";
 
 /// basic test contract which does single depositor single pool
@@ -122,7 +122,7 @@ contract StakingContractTestSimple is StakingContractTestBase {
 
         depositor.deposit(depositAmount);
 
-        vm.warp(MPXUtils.addDays(block.timestamp, 15));
+        vm.warp(MBXUtils.addDays(block.timestamp, 15));
 
         assertEq(stakingToken.balanceOf(address(stakingContract)), depositAmount);
         depositor.claimReward();
@@ -147,7 +147,7 @@ contract StakingContractTestSimple is StakingContractTestBase {
 
         depositor.deposit(_depositAmount);
 
-        vm.warp(MPXUtils.addDays(block.timestamp, 15));
+        vm.warp(MBXUtils.addDays(block.timestamp, 15));
 
         assertEq(stakingToken.balanceOf(address(stakingContract)), _depositAmount);
         depositor.claimReward();
@@ -282,7 +282,7 @@ contract StakingContractTestSimple is StakingContractTestBase {
         uint256 expectedRewardRate = totalRewardAmount / totalDuration;
 
         // Actual reward rate from the function
-        uint256 actualRewardRate = MPXUtils.computeRewardRate(totalRewardAmount, totalDuration);
+        uint256 actualRewardRate = MBXUtils.computeRewardRate(totalRewardAmount, totalDuration);
         assertEq(actualRewardRate, expectedRewardRate, "reward rate incorrect");
 
         return ( actualRewardRate, expectedRewardRate);

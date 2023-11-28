@@ -2,11 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/MPXStaking.sol";
-import "../src/MPXUtils.sol";
+import "../src/MBXStaking.sol";
+import "../src/MBXUtils.sol";
 import "./MockERC20.sol";
 import "./StakingDepositor.sol";
-import "./MPXStakingBase.sol";
+import "./MBXStakingBase.sol";
 import "../src/interfaces/IERC20Lite.sol";
 
 /// basic test contract which does multiple depositors single pool
@@ -106,7 +106,6 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         assertEq(pool.pools[1].totalStaked, depositAmount*2);
         assertEq(pool.pools[0].totalStaked, depositAmount*2);
 
-        // todo: validate contract balance
     }
 
 
@@ -214,7 +213,6 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         assertEq(pool.pools[1].totalStaked, _depositAmount*2);
         assertEq(pool.pools[0].totalStaked, _depositAmount*2);
 
-        // todo: validate contract balance
     }
 
 
@@ -269,7 +267,7 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         depositor3.unstake(depositAmount);
 
         // total days advanced: 15
-        vm.warp(MPXUtils.addDays(block.timestamp, 15) + 100);
+        vm.warp(MBXUtils.addDays(block.timestamp, 15) + 100);
 
         // do a partial unstake
         depositor1.unstake(depositAmount);
@@ -317,7 +315,7 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         depositor3.unstake(fundAmount);
 
         // total days advanced: 30
-        vm.warp(MPXUtils.addDays(block.timestamp, 15) + 100);
+        vm.warp(MBXUtils.addDays(block.timestamp, 15) + 100);
 
         depositor2.unstake(fundAmount);
         deposit = stakingContract.getUserStake(0, address(depositor2));
@@ -337,13 +335,13 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         depositor3.unstake(fundAmount);
 
         // total days advanced: 45
-        vm.warp(MPXUtils.addDays(block.timestamp, 15) + 100);
+        vm.warp(MBXUtils.addDays(block.timestamp, 15) + 100);
         // depositor3 is still not unlocked
         vm.expectRevert();
         depositor3.unstake(fundAmount);
 
         // total days advanced: 60
-        vm.warp(MPXUtils.addDays(block.timestamp, 15)+100);
+        vm.warp(MBXUtils.addDays(block.timestamp, 15)+100);
         depositor3.unstake(fundAmount);
         deposit = stakingContract.getUserStake(0, address(depositor2));
         pool = stakingContract.getStakingPool(0);
@@ -377,7 +375,7 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         depositor2.deposit(depositAmount);
         depositor3.deposit(depositAmount);
 
-        MPXUtils.UnstakePenalty memory unstakePenalty = MPXUtils.calculateUnstakePenalty(
+        MBXUtils.UnstakePenalty memory unstakePenalty = MBXUtils.calculateUnstakePenalty(
             depositAmount,
             stakingToken.decimals()
         );

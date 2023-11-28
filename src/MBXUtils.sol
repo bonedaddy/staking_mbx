@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library MPXUtils {
+library MBXUtils {
     /// @dev number of seconds in a single day
     uint256 public constant SECONDS_PER_DAY = 86400;
     /// @dev during early unstake 5 % goes to dev
@@ -37,9 +37,6 @@ library MPXUtils {
         pure
         returns (uint256)
     {
-        /// @todo this is probably incorrectly using MULTIPLIER_PRECISION
-        // just check if this is needed
-        // update: removed Multiplier precision for all contracts
         return (_totalRewardAmount ) / _totalDurationInSeconds;
     }
 
@@ -50,7 +47,7 @@ library MPXUtils {
 
     /// @dev used to add _days to _timestamp
     function addDays(uint256 _timestamp, uint256 _days) public pure returns (uint256 newTimestamp) {
-        newTimestamp = _timestamp + (_days * MPXUtils.SECONDS_PER_DAY);
+        newTimestamp = _timestamp + (_days * MBXUtils.SECONDS_PER_DAY);
         require(newTimestamp >= _timestamp);
     }
 

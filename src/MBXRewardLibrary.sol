@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library MPXReward {
+library MBXReward {
     //uint256 public constant SECONDS_PER_DAY = 86400;
     uint256 public constant SCALING_FACTOR = 1e18;
 

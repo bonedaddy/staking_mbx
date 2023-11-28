@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
-import "../src/MPXStaking.sol";
-import "../src/MPXUtils.sol";
+import "../src/MBXStaking.sol";
+import "../src/MBXUtils.sol";
 import "./MockERC20.sol";
 import "../src/interfaces/IERC20Lite.sol";
 
