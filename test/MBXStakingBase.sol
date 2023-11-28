@@ -8,18 +8,15 @@ import "./MockERC20.sol";
 import "./StakingDepositor.sol";
 import "../src/interfaces/IERC20Lite.sol";
 
-
-
 contract StakingContractTestBase is Test {
     StakingContract public stakingContract;
     MockERC20 public stakingToken;
     MockERC20 public rewardToken;
 
-    function newStakingDepositor(
-        StakingContract.StakingTier _tier,
-        uint256 _stakingTokensToFund,
-        uint256 _poolId
-    ) public returns (StakingDepositor) {
+    function newStakingDepositor(StakingContract.StakingTier _tier, uint256 _stakingTokensToFund, uint256 _poolId)
+        public
+        returns (StakingDepositor)
+    {
         StakingDepositor depositor = new StakingDepositor(
             address(stakingContract),
             address(stakingToken),
@@ -37,10 +34,7 @@ contract StakingContractTestBase is Test {
         uint256 _thirtyTierRewardsToEmit,
         uint256 _sixtyTierRewardsToEmit
     ) public {
-        MBXUtils.TimeSpan memory tspan = MBXUtils.computeTimeSpan(
-            _startTime,
-            _rewardDurationSeconds
-        );
+        MBXUtils.TimeSpan memory tspan = MBXUtils.computeTimeSpan(_startTime, _rewardDurationSeconds);
 
         stakingToken = new MockERC20("Staking Token", "STK", 18);
         rewardToken = new MockERC20("Reward Token", "RWD", 18);
@@ -65,13 +59,7 @@ contract StakingContractTestBase is Test {
         tiers[1] = StakingContract.StakingTier.Thirty;
         tiers[2] = StakingContract.StakingTier.Sixty;
 
-        stakingContract.newStakePool(
-            params,
-            tiers,
-            tspan,
-            address(stakingToken),
-            address(rewardToken)
-        );
+        stakingContract.newStakePool(params, tiers, tspan, address(stakingToken), address(rewardToken));
 
         // Mint tokens for the test
         stakingToken.mint(address(this), 100000000000 ether);
@@ -80,5 +68,5 @@ contract StakingContractTestBase is Test {
 
         // Approve tokens for staking
         stakingToken.approve(address(stakingContract), 100000000000 ether);
-    }    
+    }
 }

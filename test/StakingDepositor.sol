@@ -13,12 +13,7 @@ contract StakingDepositor {
     StakingContract immutable staking;
     StakingContract.StakingTier immutable tier;
 
-    constructor(
-        address _stakingContract,
-        address _stakingToken,
-        uint256 _poolId,
-        StakingContract.StakingTier _tier
-    ) {
+    constructor(address _stakingContract, address _stakingToken, uint256 _poolId, StakingContract.StakingTier _tier) {
         stakingToken = IERC20(_stakingToken);
         stakingToken.approve(_stakingContract, 10000000000 ether);
         poolId = _poolId;

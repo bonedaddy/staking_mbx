@@ -37,11 +37,15 @@ library MBXUtils {
         pure
         returns (uint256)
     {
-        return (_totalRewardAmount ) / _totalDurationInSeconds;
+        return (_totalRewardAmount) / _totalDurationInSeconds;
     }
 
     /// @dev used to compute the start and end times in unix timestamp for which the staking pool is active
-    function computeTimeSpan(uint256 _startTime, uint256 _rewardDurationSeconds) public pure returns (TimeSpan memory) {
+    function computeTimeSpan(uint256 _startTime, uint256 _rewardDurationSeconds)
+        public
+        pure
+        returns (TimeSpan memory)
+    {
         return TimeSpan(_startTime, _startTime + _rewardDurationSeconds);
     }
 
@@ -66,5 +70,4 @@ library MBXUtils {
     function totalPenaltyFee(UnstakePenalty memory _penalty) public pure returns (uint256) {
         return _penalty.burnAmount + _penalty.devFee;
     }
-
 }
