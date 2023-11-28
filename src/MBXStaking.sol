@@ -160,13 +160,16 @@ contract StakingContract is ReentrancyGuard {
     /// @param _tier is the staking tier to deposit into, and is set the first time msg.sender deposits into the staking pool
     function stake(uint256 _poolId, uint256 _amount, StakingTier _tier) external nonReentrant {
         require(_amount > 100, "min_balance");
-
+        StakingPoolDeposit memory deposit = deposits[_poolId][msg.sender];
+        
         // initialize deposit tier before proceeding
-        if (!isDepositInitialized(_poolId, msg.sender)) {
-            deposits[_poolId][msg.sender].initialized = true;
-            deposits[_poolId][msg.sender].tier = _tier;
+        if (!deposit.initialized) {
+            deposit.initialized = true;
+            deposit.tier = _tier;
+            // persist updates before calling updateReward
+            deposits[_poolId][msg.sender] = deposit;
         } else {
-            require(deposits[_poolId][msg.sender].tier == _tier, "invalid_tier");
+            require(deposit.tier == _tier, "invalid_tier");
         }
 
         // update reward data
@@ -176,7 +179,8 @@ contract StakingContract is ReentrancyGuard {
 
         require(block.timestamp >= pool.startTime, "not_started");
 
-        StakingPoolDeposit memory deposit = deposits[_poolId][msg.sender];
+        // load deposit data
+        deposit = deposits[_poolId][msg.sender];
 
         // increment unlock time
         deposit.unlockTime = addDays(block.timestamp, _tier);
@@ -321,14 +325,6 @@ contract StakingContract is ReentrancyGuard {
             MBXReward.UserRewardData({userRewardPerTokenPaid: deposit.userRewardPerTokenPaid, rewards: deposit.rewards}),
             deposit.stakedAmount
         );
-    }
-
-    /// @dev returns if the deposit is initialized for _poolId, _account
-    /// @param _poolId the identifier of the staking pool
-    /// @param _account the account of the staker to lookup
-    function isDepositInitialized(uint256 _poolId, address _account) internal view returns (bool) {
-        StakingPoolDeposit memory deposit = deposits[_poolId][_account];
-        return deposit.initialized;
     }
 
     /// @dev used to update reward data for the staking tier the user account is deposited into, and for the account
