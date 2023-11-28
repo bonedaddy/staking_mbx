@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 library MBXUtils {
     /// @dev number of seconds in a single day
     uint256 public constant SECONDS_PER_DAY = 86400;
-    /// @dev during early unstake 5 % goes to dev
-    uint256 public constant UNSTAKE_DEV_FEE_PERCENT = 5;
-    /// @dev during early unstake 15% gets burned
-    uint256 public constant UNSTAKE_BURN_PERCENT = 15;
+    /// @dev during early unstake 10 % goes to dev
+    uint256 public constant UNSTAKE_DEV_FEE_PERCENT = 10;
+    /// @dev during early unstake 10% gets burned
+    uint256 public constant UNSTAKE_BURN_PERCENT = 10;
 
     /// @dev object contains the start and end times of an actively emitting stake pool
     struct TimeSpan {
