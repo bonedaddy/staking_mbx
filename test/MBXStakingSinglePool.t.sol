@@ -291,7 +291,9 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         depositor3.deposit(depositAmount);
 
         MBXUtils.UnstakePenalty memory unstakePenalty =
-            MBXUtils.calculateUnstakePenalty(depositAmount, stakingToken.decimals());
+            MBXUtils.calculateUnstakePenalty(depositAmount, stakingToken.decimals(), false);
+        MBXUtils.UnstakePenalty memory minUnstakePenalty =
+            MBXUtils.calculateUnstakePenalty(depositAmount, stakingToken.decimals(), true);
 
         vm.warp(block.timestamp + 901);
 
@@ -306,6 +308,6 @@ contract StakingContractTestSinglePool is StakingContractTestBase {
         deposit = stakingContract.getUserStake(0, address(depositor2));
         assertEq(deposit.stakedAmount, 0, "staked amount is 0");
 
-        assertEq(stakingToken.balanceOf(stakingContract.devWallet()), unstakePenalty.devFee * 3);
+        assertEq(stakingToken.balanceOf(stakingContract.devWallet()), unstakePenalty.devFee * 2 + minUnstakePenalty.devFee);
     }
 }
