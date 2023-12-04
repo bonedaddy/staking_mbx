@@ -8,6 +8,10 @@ library MBXUtils {
     uint256 public constant UNSTAKE_DEV_FEE_PERCENT = 15;
     /// @dev during early unstake 10% gets burned
     uint256 public constant UNSTAKE_BURN_PERCENT = 5;
+    /// @dev during early unstake for <30d burn fee percent
+    uint256 public constant MIN_UNSTAKE_DEV_FEE_PERCENT = 5;
+    /// @dev during early unstake for <30d dev fee percent
+    uint256 public constant MIN_UNSTAKE_BURN_PERCENT = 5;
 
     /// @dev object contains the start and end times of an actively emitting stake pool
     struct TimeSpan {
@@ -56,13 +60,21 @@ library MBXUtils {
     }
 
     /// @dev calculates the unstake penalty using the deciamls of the reward token
-    function calculateUnstakePenalty(uint256 amount, uint8 decimals) public pure returns (UnstakePenalty memory) {
+    function calculateUnstakePenalty(uint256 amount, uint8 decimals, bool _min_penalty) public pure returns (UnstakePenalty memory) {
         require(decimals <= 18, "Decimals should not exceed 18");
 
         uint256 factor = 10 ** uint256(decimals);
         uint256 scaledAmount = amount * factor; // Scale up the amount to include decimals
-        uint256 burnAmount = (scaledAmount * UNSTAKE_BURN_PERCENT) / 100;
-        uint256 devFee = (scaledAmount * UNSTAKE_DEV_FEE_PERCENT) / 100;
+
+        uint256 burnAmount;
+        uint256 devFee;
+        if (_min_penalty) {
+            burnAmount = (scaledAmount * MIN_UNSTAKE_BURN_PERCENT) / 100;
+            devFee = (scaledAmount * MIN_UNSTAKE_DEV_FEE_PERCENT) / 100;
+        } else {
+            burnAmount = (scaledAmount * UNSTAKE_BURN_PERCENT) / 100;
+            devFee = (scaledAmount * UNSTAKE_DEV_FEE_PERCENT) / 100;
+        }
         return UnstakePenalty({burnAmount: burnAmount / factor, devFee: devFee / factor});
     }
 

@@ -254,7 +254,7 @@ contract StakingContract is ReentrancyGuard {
         require(deposit.initialized, "not initialized");
 
         MBXUtils.UnstakePenalty memory unstakePenalty =
-            MBXUtils.calculateUnstakePenalty(deposit.stakedAmount, pool.stakingToken.decimals());
+            MBXUtils.calculateUnstakePenalty(deposit.stakedAmount, pool.stakingToken.decimals(), deposit.tier == StakingTier.Fifteen);
 
         // the total penalty to deduct from their withdrawable amount
         uint256 totalPenalty = MBXUtils.totalPenaltyFee(unstakePenalty);
