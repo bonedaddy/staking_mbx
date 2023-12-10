@@ -9,6 +9,7 @@ import "../src/interfaces/IERC20Lite.sol";
 contract CheckpointStakingDepositor {
     IERC20 immutable stakingToken;
     StakingCheckpoint public staking;
+
     constructor(address _stakingContract, address _stakingToken) {
         stakingToken = IERC20(_stakingToken);
         stakingToken.approve(_stakingContract, 10000000000 ether);
@@ -20,8 +21,11 @@ contract CheckpointStakingDepositor {
         staking.stake(_amount);
     }
 
+    function withdraw(uint256 _amount) public {
+        staking.unstake(_amount);
+    }
+
     function claimRewards(uint256 _periodId) public {
         staking.claimRewards(_periodId);
     }
-
 }

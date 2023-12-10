@@ -1,4 +1,5 @@
-    pragma solidity ^0.8.0;
+pragma solidity ^0.8.0;
+
 import "./interfaces/IERC20Lite.sol";
 import "solmate/utils/ReentrancyGuard.sol";
 import "forge-std/console.sol";
@@ -6,9 +7,9 @@ import "forge-std/console.sol";
 contract StakingCheckpoint is ReentrancyGuard {
     /// @dev number of seconds in a single day
     uint256 public constant SECONDS_PER_DAY = 86400;
-    address immutable public owner;
-    address immutable public rewardToken;
-    address immutable public stakingToken;
+    address public immutable owner;
+    address public immutable rewardToken;
+    address public immutable stakingToken;
     /// @dev indicates if the staking contract is paused
     bool public paused;
     /// @dev indicates if the staking contract has been initialized to begin reward distribution
@@ -18,7 +19,7 @@ contract StakingCheckpoint is ReentrancyGuard {
     /// @dev having to handle staking distributions for the first period due to default values of 0
     uint256 public currentDistributionPeriod;
 
-    /// @dev tracks a users current deposit 
+    /// @dev tracks a users current deposit
     struct DepositInformation {
         /// @dev tracks their active deposit balance
         uint256 depositedBalance;
@@ -29,7 +30,6 @@ contract StakingCheckpoint is ReentrancyGuard {
         /// @dev time at which the user last claimed rewards, used for
         ///      calculating the active rewards to be earned
         uint256 lastClaimTime;
-        
     }
 
     /// @dev a checkpoint of their deposits
@@ -48,9 +48,7 @@ contract StakingCheckpoint is ReentrancyGuard {
         uint256 periodStartedAt;
         /// @dev indicates if the distribution period is finished and has rolled over to a new one
         bool finished;
-
     }
-
 
     struct RevenueDistributionStats {
         /// @dev the time at which the revenue is deposited and rewards start
@@ -64,32 +62,26 @@ contract StakingCheckpoint is ReentrancyGuard {
     }
 
     /// @dev maps user address => distribution period => deposit
-    mapping (address => mapping(uint256 => DepositInformation)) public userDeposits;
+    mapping(address => mapping(uint256 => DepositInformation)) public userDeposits;
     /// @dev maps period number => deposits
-    mapping (uint256 => DistributionPeriod) public distributionPeriods;
+    mapping(uint256 => DistributionPeriod) public distributionPeriods;
     /// @dev indicates the period that the user last deposited into
     /// @dev used to determine whether or not a user's deposit needs to be rolled over
-    mapping (address => uint256) public lastPeriodDeposited;
+    /// @dev if a user unstakes this also tracks their unstake period
+    mapping(address => uint256) public lastPeriodDeposited;
     /// @dev tracks revenue distribution parameters
-    mapping (uint256 => RevenueDistributionStats) public revenueStats;
+    mapping(uint256 => RevenueDistributionStats) public revenueStats;
     /// @dev records a checkpoint of all user deposits in a given period
-    mapping (address => mapping(uint256 => DepositCheckpoint[])) internal depositCheckpoints;
+    mapping(address => mapping(uint256 => DepositCheckpoint[])) internal depositCheckpoints;
+    /// @dev records a checkpoint of all withdraw withdrawals in a given period
+    mapping(address => mapping(uint256 => DepositCheckpoint[])) internal withdrawCheckpoints;
 
-    
-    event Staked(
-        address _depositor, 
-        uint256 _amount, 
-        uint256 _periodId, 
-        uint256 _blockTime);
+    event Staked(address _depositor, uint256 _amount, uint256 _periodId, uint256 _blockTime);
 
     event RevenueDistributed(
-        uint256 _amount,
-        uint256 _claimStart,
-        uint256 _claimEnd,
-        uint256 _rewardRate,
-        uint256 _periodId
+        uint256 _amount, uint256 _claimStart, uint256 _claimEnd, uint256 _rewardRate, uint256 _periodId
     );
-    
+
     event RevenueClaimed(
         address _depositor,
         uint256 _amount,
@@ -119,7 +111,6 @@ contract StakingCheckpoint is ReentrancyGuard {
         uint256 lastPeriodDepositAt = lastPeriodDeposited[msg.sender];
         uint256 currentPeriodId = currentDistributionPeriod;
 
-
         DistributionPeriod memory dpc = distributionPeriods[currentPeriodId];
         // this case really shouldnt happen
         require(!dpc.finished, "period_finished");
@@ -133,6 +124,8 @@ contract StakingCheckpoint is ReentrancyGuard {
             dc = userDeposits[msg.sender][lastPeriodDepositAt];
             // make sure to reset revenue claiemd in the current period
             dc.revenueClaimed = false;
+            // reset last claim time
+            dc.lastClaimTime = 0;
         } else if (lastPeriodDepositAt != 0 && lastPeriodDepositAt == currentPeriodId) {
             // user is deposited into the current period, so copy balance information
             // from the current period
@@ -162,14 +155,55 @@ contract StakingCheckpoint is ReentrancyGuard {
         distributionPeriods[currentPeriodId] = dpc;
 
         // record a deposit checkpoint
-        depositCheckpoints[msg.sender][currentPeriodId].push(DepositCheckpoint({
-            timestamp: block.timestamp,
-            amount: _amount
-        }));
+        depositCheckpoints[msg.sender][currentPeriodId].push(
+            DepositCheckpoint({timestamp: block.timestamp, amount: _amount})
+        );
 
         IERC20(stakingToken).transferFrom(msg.sender, address(this), _amount);
 
         emit Staked(msg.sender, _amount, currentPeriodId, block.timestamp);
+    }
+
+    function unstake(uint256 _amount) external nonReentrant {
+        require(_amount > 0, "insufficient_withdraw");
+
+        uint256 lastPeriodDepositAt = lastPeriodDeposited[msg.sender];
+        uint256 currentPeriodId = currentDistributionPeriod;
+
+        DepositInformation memory depositInfo;
+
+        if (lastPeriodDepositAt != 0 && lastPeriodDepositAt < currentPeriodId) {
+            // their last deposit is from a different period
+            // so we need to rollover their deposit into the current period
+            depositInfo = userDeposits[msg.sender][lastPeriodDepositAt];
+            // nullify revenue claim
+            depositInfo.revenueClaimed = false;
+            // reset last claim time
+            depositInfo.lastClaimTime = 0;
+        } else if (lastPeriodDepositAt != 0 && lastPeriodDepositAt == currentPeriodId) {
+            depositInfo = userDeposits[msg.sender][currentPeriodId];
+        } else {
+            // it should not be possible for a user to withdraw and have a deposit id of 0
+            // nor should it be possible for them to withdrawa with a deposit id > current period id
+            revert("should not happen");
+        }
+
+        require(depositInfo.lastDepositTime + 60 * 86400 <= block.timestamp, "deposit_locked");
+
+        DistributionPeriod memory dpc = distributionPeriods[currentPeriodId];
+
+        depositInfo.depositedBalance -= _amount;
+        dpc.totalDepositedBalance -= _amount;
+
+        // checkpoint their withdraw
+        withdrawCheckpoints[msg.sender][lastPeriodDepositAt].push(
+            DepositCheckpoint({timestamp: block.timestamp, amount: _amount})
+        );
+
+        // persist deposit info, distribution period, and last period deposit
+        distributionPeriods[currentPeriodId] = dpc;
+        userDeposits[msg.sender][currentPeriodId] = depositInfo;
+        lastPeriodDeposited[msg.sender] = currentPeriodId;
     }
 
     function enableStaking() external nonReentrant {
@@ -224,19 +258,10 @@ contract StakingCheckpoint is ReentrancyGuard {
             rewardRate: rewardRate
         });
 
-        
-
         ercI.transferFrom(msg.sender, address(this), _amountToDistribute);
 
-        emit RevenueDistributed(
-            _amountToDistribute,
-            block.timestamp,
-            endTime,
-            rewardRate,
-            previousPeriodId
-        );
+        emit RevenueDistributed(_amountToDistribute, block.timestamp, endTime, rewardRate, previousPeriodId);
     }
-
 
     function claimRewards(uint256 _periodId) external nonReentrant {
         DepositInformation memory depositInfo = userDeposits[msg.sender][_periodId];
@@ -244,7 +269,8 @@ contract StakingCheckpoint is ReentrancyGuard {
         require(depositInfo.depositedBalance > 0, "insufficient_funds");
         DistributionPeriod memory distributionPeriod = distributionPeriods[_periodId];
         RevenueDistributionStats memory rewardInfo = revenueStats[_periodId];
-        require(rewardInfo.startTime != 0 && rewardInfo.endTime != 0, "invalid_reward_starts");
+        require(rewardInfo.startTime > 0 && rewardInfo.endTime > 0, "invalid_reward_starts");
+        require(rewardInfo.revenueToDistribute > 0, "invalid_revenue");
         require(distributionPeriod.finished, "period_not_finished");
 
         uint256 claimStartTime;
@@ -253,8 +279,8 @@ contract StakingCheckpoint is ReentrancyGuard {
             claimStartTime = rewardInfo.startTime;
         } else {
             claimStartTime = depositInfo.lastClaimTime;
-        } 
-        console.log("claimStartTime", claimStartTime);
+        }
+
         uint256 currentClaimTime;
         if (block.timestamp > rewardInfo.endTime) {
             // claiming after calculation period is over
@@ -264,20 +290,17 @@ contract StakingCheckpoint is ReentrancyGuard {
         } else {
             currentClaimTime = block.timestamp;
         }
-        console.log("currentClaimTime", currentClaimTime);
+
         uint256 timeSinceLastClaim = currentClaimTime - claimStartTime;
-        console.log("timeSinceLastClaim", timeSinceLastClaim);
 
         // divides the number of seconds the claim window is for by the amount of rewards per second
-        uint256 rewardPerTokenStored = (timeSinceLastClaim * rewardInfo.rewardRate) / distributionPeriod.totalDepositedBalance;
-        console.log("rewardPerTokenStored", rewardPerTokenStored);
+        uint256 rewardPerTokenStored =
+            (timeSinceLastClaim * rewardInfo.rewardRate) / distributionPeriod.totalDepositedBalance;
 
         uint256 claimAmount = rewardPerTokenStored * depositInfo.depositedBalance;
 
-        console.log("claimAmount", claimAmount);
-
         depositInfo.lastClaimTime = currentClaimTime;
-        if (block.timestamp > rewardInfo.endTime) {
+        if (block.timestamp >= rewardInfo.endTime) {
             // mark revenue as fully claimed
             depositInfo.revenueClaimed = true;
         }
@@ -285,9 +308,18 @@ contract StakingCheckpoint is ReentrancyGuard {
         // persist deposit info
         userDeposits[msg.sender][_periodId] = depositInfo;
 
-        emit RevenueClaimed(msg.sender, claimAmount, rewardPerTokenStored, rewardInfo.revenueToDistribute,timeSinceLastClaim, depositInfo.revenueClaimed);
+        emit RevenueClaimed(
+            msg.sender,
+            claimAmount,
+            rewardPerTokenStored,
+            rewardInfo.revenueToDistribute,
+            timeSinceLastClaim,
+            depositInfo.revenueClaimed
+        );
 
-
+        if (claimAmount > 0) {
+            IERC20(rewardToken).transfer(msg.sender, claimAmount);
+        }
     }
 
     /// @dev used to add _days to _timestamp
@@ -296,7 +328,7 @@ contract StakingCheckpoint is ReentrancyGuard {
         require(newTimestamp >= _timestamp);
     }
 
-        /// @dev used to compute the rewardRate parameters which will distribute _totalRewardAmount over _totalDurationInSeconds
+    /// @dev used to compute the rewardRate parameters which will distribute _totalRewardAmount over _totalDurationInSeconds
     function computeRewardRate(uint256 _totalRewardAmount, uint256 _totalDurationInSeconds)
         internal
         pure
@@ -306,18 +338,14 @@ contract StakingCheckpoint is ReentrancyGuard {
     }
 
     // Function to calculate the average balance of a user over the deposit window
-    function calculateAverageBalance(
-        address _depositor, 
-        uint256 _periodNumber
-    ) public view returns (uint256) {
-
+    function calculateAverageBalance(address _depositor, uint256 _periodNumber) public view returns (uint256) {
         DepositCheckpoint[] memory deposits = depositCheckpoints[_depositor][_periodNumber];
         RevenueDistributionStats memory revenue = revenueStats[_periodNumber];
         //DistributionPeriod memory distributionPeriod = distributionPeriods[_periodNumber];
-        
+
         uint256 timeWeightedBalance = 0;
 
-        for (uint i = 0; i < deposits.length; i++) {
+        for (uint256 i = 0; i < deposits.length; i++) {
             uint256 depositTime = deposits[i].timestamp;
             uint256 depositAmount = deposits[i].amount;
             // this is likely incorrect
@@ -328,9 +356,13 @@ contract StakingCheckpoint is ReentrancyGuard {
         // Calculate the average balance
         return timeWeightedBalance;
     }
-    
+
     /// @dev returns the users deposit for this particular information
-    function getUserDeposit(address _depositor, uint256 _distributionPeriod) external view returns (DepositInformation memory) {
+    function getUserDeposit(address _depositor, uint256 _distributionPeriod)
+        external
+        view
+        returns (DepositInformation memory)
+    {
         return userDeposits[_depositor][_distributionPeriod];
     }
 
@@ -345,7 +377,11 @@ contract StakingCheckpoint is ReentrancyGuard {
     }
 
     /// @dev returns a deposit checkpoint for a depositor in the given distribution period
-    function getDepositCheckpoints(address _depositor, uint256 _distributionPeriod) external view returns (DepositCheckpoint[] memory) {
+    function getDepositCheckpoints(address _depositor, uint256 _distributionPeriod)
+        external
+        view
+        returns (DepositCheckpoint[] memory)
+    {
         return depositCheckpoints[_depositor][_distributionPeriod];
     }
 }
