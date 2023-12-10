@@ -223,4 +223,110 @@ contract CheckpointStakingBaseTest is Test {
         // claim remaining rewards
         depositor.claimRewards(2);
     }
+
+    // tests early unstake with more than 50% unstake time remaining
+    function test_EarlyUnstake_MoreThanHalf() public {
+        // unpause the staking functionality
+        stakingContract.togglePause();
+        // activate staking
+        stakingContract.enableStaking();
+
+        StakingCheckpoint.DistributionPeriod memory distributionPeriod = stakingContract.getDistributionPeriod(1);
+        require(distributionPeriod.periodStartedAt == block.timestamp);
+
+        vm.warp(block.timestamp + 1);
+
+        CheckpointStakingDepositor depositor = newStakingDepositor(1000 ether);
+        depositor.deposit(1 ether);
+
+        StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
+            stakingContract.getDepositCheckpoints(address(depositor), 1);
+        require(depositCheckpoints.length == 1, "invalid_length");
+
+        StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        distributionPeriod = stakingContract.getDistributionPeriod(1);
+
+        require(!distributionPeriod.finished, "not_finished");
+        require(depositInfo.depositedBalance == distributionPeriod.totalDepositedBalance, "mismatch_deposit");
+        require(depositInfo.depositedBalance == 1 ether, "invalid_balance");
+        assertEq(depositInfo.lastDepositTime, block.timestamp);
+        require(!depositInfo.revenueClaimed, "revenue_claimed");
+
+        uint256 previousDepositTime = depositInfo.lastDepositTime;
+
+        vm.warp(block.timestamp + 60);
+
+        depositor.deposit(2 ether);
+
+        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        distributionPeriod = stakingContract.getDistributionPeriod(1);
+        require(depositCheckpoints.length == 2, "invalid_length");
+        require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
+        depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        require(depositInfo.lastDepositTime > previousDepositTime, "current_timestamp_not_greater");
+        require(depositInfo.depositedBalance == distributionPeriod.totalDepositedBalance);
+
+        previousDepositTime = depositInfo.lastDepositTime;
+
+        // advance 60 days
+        vm.warp(block.timestamp + 1 * 86400);
+
+        depositor.earlyWithdraw();
+
+        depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        require(depositInfo.depositedBalance == 0, "invalid_balance");
+    }
+    // tests early unstake with less than 50% unstake time remaining
+
+    function test_EarlyUnstake_LessThanHalf() public {
+        // unpause the staking functionality
+        stakingContract.togglePause();
+        // activate staking
+        stakingContract.enableStaking();
+
+        StakingCheckpoint.DistributionPeriod memory distributionPeriod = stakingContract.getDistributionPeriod(1);
+        require(distributionPeriod.periodStartedAt == block.timestamp);
+
+        vm.warp(block.timestamp + 1);
+
+        CheckpointStakingDepositor depositor = newStakingDepositor(1000 ether);
+        depositor.deposit(1 ether);
+
+        StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
+            stakingContract.getDepositCheckpoints(address(depositor), 1);
+        require(depositCheckpoints.length == 1, "invalid_length");
+
+        StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        distributionPeriod = stakingContract.getDistributionPeriod(1);
+
+        require(!distributionPeriod.finished, "not_finished");
+        require(depositInfo.depositedBalance == distributionPeriod.totalDepositedBalance, "mismatch_deposit");
+        require(depositInfo.depositedBalance == 1 ether, "invalid_balance");
+        assertEq(depositInfo.lastDepositTime, block.timestamp);
+        require(!depositInfo.revenueClaimed, "revenue_claimed");
+
+        uint256 previousDepositTime = depositInfo.lastDepositTime;
+
+        vm.warp(block.timestamp + 60);
+
+        depositor.deposit(2 ether);
+
+        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        distributionPeriod = stakingContract.getDistributionPeriod(1);
+        require(depositCheckpoints.length == 2, "invalid_length");
+        require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
+        depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        require(depositInfo.lastDepositTime > previousDepositTime, "current_timestamp_not_greater");
+        require(depositInfo.depositedBalance == distributionPeriod.totalDepositedBalance);
+
+        previousDepositTime = depositInfo.lastDepositTime;
+
+        // advance 60 days
+        vm.warp(block.timestamp + 31 * 86400);
+
+        depositor.earlyWithdraw();
+
+        depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
+        require(depositInfo.depositedBalance == 0, "invalid_balance");
+    }
 }

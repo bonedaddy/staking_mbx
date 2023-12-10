@@ -4,6 +4,9 @@ import "./interfaces/IERC20Lite.sol";
 import "solmate/utils/ReentrancyGuard.sol";
 import "forge-std/console.sol";
 
+// @todo: validate values from early unstaking
+// @todo: validate values from unstaking
+// @todo: validate staking after early unstaking
 contract StakingCheckpoint is ReentrancyGuard {
     /// @dev number of seconds in a single day
     uint256 public constant SECONDS_PER_DAY = 86400;
@@ -77,7 +80,15 @@ contract StakingCheckpoint is ReentrancyGuard {
     mapping(address => mapping(uint256 => DepositCheckpoint[])) internal withdrawCheckpoints;
 
     event Staked(address _depositor, uint256 _amount, uint256 _periodId, uint256 _blockTime);
-
+    event Unstaked(address _depositor, uint256 _amount, uint256 _periodId, uint256 _blockTime);
+    event EarlyUnstake(
+        address _depositor,
+        uint256 _penaltiedWithdraw,
+        uint256 _burnAmount,
+        uint256 _devFee,
+        uint256 _periodId,
+        uint256 _blockTime
+    );
     event RevenueDistributed(
         uint256 _amount, uint256 _claimStart, uint256 _claimEnd, uint256 _rewardRate, uint256 _periodId
     );
@@ -204,6 +215,79 @@ contract StakingCheckpoint is ReentrancyGuard {
         distributionPeriods[currentPeriodId] = dpc;
         userDeposits[msg.sender][currentPeriodId] = depositInfo;
         lastPeriodDeposited[msg.sender] = currentPeriodId;
+
+        IERC20(stakingToken).transfer(msg.sender, _amount);
+
+        emit Unstaked(msg.sender, _amount, currentPeriodId, block.timestamp);
+    }
+
+    function earlyUnstake() external nonReentrant {
+        uint256 lastPeriodDepositAt = lastPeriodDeposited[msg.sender];
+        uint256 currentPeriodId = currentDistributionPeriod;
+
+        DepositInformation memory depositInfo;
+
+        if (lastPeriodDepositAt != 0 && lastPeriodDepositAt < currentPeriodId) {
+            // their last deposit is from a different period
+            // so we need to rollover their deposit into the current period
+            depositInfo = userDeposits[msg.sender][lastPeriodDepositAt];
+            // nullify revenue claim
+            depositInfo.revenueClaimed = false;
+            // reset last claim time
+            depositInfo.lastClaimTime = 0;
+        } else if (lastPeriodDepositAt != 0 && lastPeriodDepositAt == currentPeriodId) {
+            depositInfo = userDeposits[msg.sender][currentPeriodId];
+        } else {
+            // it should not be possible for a user to withdraw and have a deposit id of 0
+            // nor should it be possible for them to withdrawa with a deposit id > current period id
+            revert("should not happen");
+        }
+
+        uint256 unstakePenaltyPercent;
+
+        if (block.timestamp > depositInfo.lastDepositTime + 60 * 86400) {
+            // if their deposit time is passed the unlock time, bail out
+            revert("use_unstake");
+        } else if (block.timestamp > depositInfo.lastDepositTime + 30 * 86400) {
+            unstakePenaltyPercent = 10;
+        } else {
+            unstakePenaltyPercent = 20;
+        }
+
+        DistributionPeriod memory dpc = distributionPeriods[currentPeriodId];
+
+        uint256 amountToWithdraw = depositInfo.depositedBalance;
+
+        console.log("amountToWithdraw", amountToWithdraw);
+        console.log("unstakePenaltyPercent", unstakePenaltyPercent);
+
+        depositInfo.depositedBalance = 0;
+        depositInfo.lastDepositTime = block.timestamp;
+        dpc.totalDepositedBalance -= amountToWithdraw;
+
+        // persist updates
+        userDeposits[msg.sender][currentPeriodId] = depositInfo;
+        distributionPeriods[currentPeriodId] = dpc;
+
+        (uint256 burnAmount, uint256 devFee) = calculateUnstakePenalty(
+            amountToWithdraw,
+            IERC20(stakingToken).decimals(),
+            5, // 5 % burn fee
+            unstakePenaltyPercent - 5 // dev fee
+        );
+
+        console.log("burnAmount", burnAmount);
+        console.log("devFee", devFee);
+
+        uint256 penaltiedWithdraw = amountToWithdraw - (burnAmount + devFee);
+
+        IERC20 ercI = IERC20(stakingToken);
+
+        ercI.transfer(msg.sender, penaltiedWithdraw);
+        ercI.transfer(address(0), burnAmount);
+        ercI.transfer(owner, devFee);
+
+        emit EarlyUnstake(msg.sender, penaltiedWithdraw, burnAmount, devFee, currentPeriodId, block.timestamp);
     }
 
     function enableStaking() external nonReentrant {
@@ -383,5 +467,21 @@ contract StakingCheckpoint is ReentrancyGuard {
         returns (DepositCheckpoint[] memory)
     {
         return depositCheckpoints[_depositor][_distributionPeriod];
+    }
+
+    /// @dev returns (burnAmount, devFee)
+    function calculateUnstakePenalty(uint256 _amount, uint8 _decimals, uint256 _burnFee, uint256 _devFee)
+        public
+        pure
+        returns (uint256, uint256)
+    {
+        require(_decimals <= 18, "Decimals should not exceed 18");
+
+        uint256 factor = 10 ** uint256(_decimals);
+        uint256 scaledAmount = _amount * factor; // Scale up the amount to include decimals
+
+        uint256 burnAmount = (scaledAmount * _burnFee) / 100;
+        uint256 devFee = (scaledAmount * _devFee) / 100;
+        return (burnAmount / factor, devFee / factor);
     }
 }

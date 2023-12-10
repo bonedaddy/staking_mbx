@@ -25,6 +25,10 @@ contract CheckpointStakingDepositor {
         staking.unstake(_amount);
     }
 
+    function earlyWithdraw() public {
+        staking.earlyUnstake();
+    }
+
     function claimRewards(uint256 _periodId) public {
         staking.claimRewards(_periodId);
     }
