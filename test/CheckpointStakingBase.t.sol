@@ -49,7 +49,7 @@ contract CheckpointStakingBaseTest is Test {
         depositor.deposit(1 ether);
 
         StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
-            stakingContract.getDepositCheckpoints(address(depositor), 1);
+            stakingContract.getBalanceChanges(address(depositor), 1);
         require(depositCheckpoints.length == 1, "invalid_length");
 
         StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
@@ -67,7 +67,7 @@ contract CheckpointStakingBaseTest is Test {
 
         depositor.deposit(2 ether);
 
-        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        depositCheckpoints = stakingContract.getBalanceChanges(address(depositor), 1);
         distributionPeriod = stakingContract.getDistributionPeriod(1);
         require(depositCheckpoints.length == 2, "invalid_length");
         require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
@@ -136,7 +136,7 @@ contract CheckpointStakingBaseTest is Test {
         depositor.deposit(1 ether);
 
         StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
-            stakingContract.getDepositCheckpoints(address(depositor), 1);
+            stakingContract.getBalanceChanges(address(depositor), 1);
         require(depositCheckpoints.length == 1, "invalid_length");
 
         StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
@@ -154,7 +154,7 @@ contract CheckpointStakingBaseTest is Test {
 
         depositor.deposit(2 ether);
 
-        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        depositCheckpoints = stakingContract.getBalanceChanges(address(depositor), 1);
         distributionPeriod = stakingContract.getDistributionPeriod(1);
         require(depositCheckpoints.length == 2, "invalid_length");
         require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
@@ -240,7 +240,7 @@ contract CheckpointStakingBaseTest is Test {
         depositor.deposit(1 ether);
 
         StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
-            stakingContract.getDepositCheckpoints(address(depositor), 1);
+            stakingContract.getBalanceChanges(address(depositor), 1);
         require(depositCheckpoints.length == 1, "invalid_length");
 
         StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
@@ -258,7 +258,7 @@ contract CheckpointStakingBaseTest is Test {
 
         depositor.deposit(2 ether);
 
-        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        depositCheckpoints = stakingContract.getBalanceChanges(address(depositor), 1);
         distributionPeriod = stakingContract.getDistributionPeriod(1);
         require(depositCheckpoints.length == 2, "invalid_length");
         require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
@@ -293,7 +293,7 @@ contract CheckpointStakingBaseTest is Test {
         depositor.deposit(1 ether);
 
         StakingCheckpoint.DepositCheckpoint[] memory depositCheckpoints =
-            stakingContract.getDepositCheckpoints(address(depositor), 1);
+            stakingContract.getBalanceChanges(address(depositor), 1);
         require(depositCheckpoints.length == 1, "invalid_length");
 
         StakingCheckpoint.DepositInformation memory depositInfo = stakingContract.getUserDeposit(address(depositor), 1);
@@ -311,7 +311,7 @@ contract CheckpointStakingBaseTest is Test {
 
         depositor.deposit(2 ether);
 
-        depositCheckpoints = stakingContract.getDepositCheckpoints(address(depositor), 1);
+        depositCheckpoints = stakingContract.getBalanceChanges(address(depositor), 1);
         distributionPeriod = stakingContract.getDistributionPeriod(1);
         require(depositCheckpoints.length == 2, "invalid_length");
         require(distributionPeriod.totalDepositedBalance == 3 ether, "invalid_deposit");
